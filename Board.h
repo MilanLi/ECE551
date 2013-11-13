@@ -1,7 +1,7 @@
 #ifndef __BOARD_H__
 #define __BOARD_H__
-
-enum pieceType{invalid = -1, empty, black, white};
+#include "DataType.h"
+#include <vector>
 
 class vec{
 public:
@@ -29,31 +29,36 @@ private:
   int boardSize;
   int blackNum;
   int whiteNum;
-  bool turn; 
   pieceType** b;
 
   void init();
-
   void freeBoard();
-  pieceType fetch(int, int);
-  pieceType reverseType(pieceType pt);
-  pieceType turnToPieceType(bool turn);
-
-  bool canFlip(int _x, int _y, pieceType pt);
-
+  pieceType fetch(int, int)const;
+  
   void flip(int x, int y, pieceType pt);
 
   bool canSetPiece(bool color);
   
 public:
+  int getBoardSize()const{return boardSize;}
+  pieceType reverseType(pieceType pt)const;  
+  pieceType turnToPieceType(bool turn)const;
+  bool canFlip(int _x, int _y, pieceType pt)const;
+  bool canFlip(int _x, int _y, pieceType pt, int& count)const;
+  bool canFlip(int _x, int _y, pieceType pt, std::vector<vec>& v)const;
+  bool turn; 
   Board():boardSize(DEFAULT_SIZE), blackNum(2), whiteNum(2), turn(false){
     init();
   }
+  Board(const Board& rhs);
+
   ~Board(){
     freeBoard();
   }
+  Board& operator=(const Board& rhs);
+  void getResult(status& stat);
   bool checkEnd();
-  void checkTurn();
+  pieceType checkTurn();
   bool setPieces(int x, int y);
   int countColor(pieceType pt);
   vec inputVec();
