@@ -1,5 +1,5 @@
 #include "Board.h"
-#include <vector>
+#include "DataType.h"
 #include <stdio.h>
 #include <cstdlib>
 #include <iostream>
@@ -17,30 +17,62 @@ void Board::init(){
   b[3][3] = b[4][4] = white;
   b[3][4] = b[4][3] = black;
 }
+
+Board::Board(const Board& rhs){
+  boardSize = rhs.boardSize;
+  blackNum = rhs.blackNum;
+  whiteNum = rhs.whiteNum;
+  turn = rhs.turn;
+  b = new pieceType*[boardSize];
+  for(int i = 0; i < boardSize; ++i){
+    b[i] = new pieceType[boardSize];
+    for(int j = 0;j < boardSize; ++j){
+      b[i][j] = rhs.b[i][j];
+    }
+  }
+}
+
+Board& Board::operator=(const Board& rhs){
+  if(this != &rhs){
+    boardSize = rhs.boardSize;
+    blackNum = rhs.blackNum;
+    whiteNum = rhs.whiteNum;
+    turn = rhs.turn;
+    b = new pieceType*[boardSize];
+    for(int i = 0; i < boardSize; ++i){
+      b[i] = new pieceType[boardSize];
+      for(int j = 0;j < boardSize; ++j){
+	b[i][j] = rhs.b[i][j];
+      }
+    }
+  }
+  return *this;
+}
+
 void Board::freeBoard(){
   for(int i = 0; i < boardSize; ++i){
     delete[] b[i];
     }
   delete [] b;
 }
-pieceType Board::fetch(int x, int y){
+pieceType Board::fetch(int x, int y)const{
   if(x < DEFAULT_SIZE && x >= 0 && y < DEFAULT_SIZE && y >= 0){
     return b[x][y];
   }
   return invalid;
 }
-pieceType Board::reverseType(pieceType pt){
+pieceType Board::reverseType(pieceType pt)const{
   return pt == black? white: pt == white? black: pt;
 }
-pieceType Board::turnToPieceType(bool turn){
+pieceType Board::turnToPieceType(bool turn)const{
   return turn? white: black;
 }
 
-bool Board::canFlip(int _x, int _y, pieceType pt){ // check if somewhere is available to set piece
+bool Board::canFlip(int _x, int _y, pieceType pt)const{ // check if somewhere is available to set piece
   if(fetch(_x, _y) != empty){
     return false;
   }
-  for(int i = 0; i < 8; i++){
+  for(int i = 0; i < boardSize; i++){
     int x(_x + Direction[i].x), y(_y + Direction[i].y);
     while(fetch(x, y) == reverseType(pt)){
       x += Direction[i].x;
@@ -49,6 +81,56 @@ bool Board::canFlip(int _x, int _y, pieceType pt){ // check if somewhere is avai
     if((x != _x + Direction[i].x || y != _y + Direction[i].y) && (fetch(x, y) == pt)){
       return true;
     }
+  }
+  return false;
+}
+
+bool Board::canFlip(int _x, int _y, pieceType pt, int& count) const{ // check if somewhere is available to set piece
+  bool flag = false;
+  if(fetch(_x, _y) != empty){
+    count = 0;
+    return flag;
+  }
+  for(int i = 0; i < boardSize; i++){
+    int x(_x + Direction[i].x), y(_y + Direction[i].y);
+    while(fetch(x, y) == reverseType(pt)){
+      x += Direction[i].x;
+      y += Direction[i].y;
+    }
+    if((x != _x + Direction[i].x || y != _y + Direction[i].y) && (fetch(x, y) == pt)){
+      count++;
+      flag = true;
+    }
+  }
+  if(flag){
+    return true;
+  }
+  return false;
+}
+
+bool Board::canFlip(int _x, int _y, pieceType pt, std::vector<vec>& v) const{ // check if somewhere is available to set piece
+  bool flag = false;
+  if(fetch(_x, _y) != empty){
+    return flag;
+  }
+  for(int i = 0; i < boardSize; i++){
+    int x(_x + Direction[i].x), y(_y + Direction[i].y);
+    while(fetch(x, y) == reverseType(pt)){
+      x += Direction[i].x;
+      y += Direction[i].y;
+    }
+    if((x != _x + Direction[i].x || y != _y + Direction[i].y) && (fetch(x, y) == pt)){
+      int x_start = _x;
+      int y_start = _y;
+      while((x_start = (x_start + Direction[i].x)) != x){
+	y_start = y_start + Direction[i].y;
+	v.push_back(vec(x_start, y_start));
+      }
+      flag = true;
+    }
+  }
+  if(flag){
+    return true;
   }
   return false;
 }
@@ -88,16 +170,45 @@ bool Board::canSetPiece(bool color){ //check if one can set piece, used for chec
   return false;
 }
 
+void Board::getResult(status& stat){
+  int blackCount = countColor(black);
+  int whiteCount = countColor(white);
+  if( blackCount > whiteCount){
+    stat.s = blackWin;
+    stat.black = blackCount;
+    stat.white = whiteCount;
+    //printf("black: %d\n", countColor(black));
+    //printf("white: %d\n", countColor(white));
+    //printf("black wins!\n");
+  }
+  else if(blackCount < whiteCount){
+    stat.s = whiteWin;
+    stat.black = blackCount;
+    stat.white = whiteCount;
+    //printf("black: %d\n", countColor(black));
+    //printf("white: %d\n", countColor(white));
+    //printf("white wins!\n");
+  }
+  else{
+    stat.s = tie;
+    stat.black = blackCount;
+    stat.white = whiteCount;
+    //printf("black: %d\n", countColor(black));
+    //printf("white: %d\n", countColor(white));
+    //printf("ties!\n");
+  }
+}
+
 bool Board::checkEnd(){
   return !(canSetPiece(turn) || canSetPiece(!turn));
 }
-void Board::checkTurn(){
+pieceType Board::checkTurn(){
   if(canSetPiece(turn)){
-    return;
+    return turnToPieceType(turn);
   }
   else if(canSetPiece(!turn)){
     turn = !turn;
-    return;
+    return turnToPieceType(turn);
   }
   else{
     std::cerr << "should have won, check error!\n";
@@ -171,7 +282,7 @@ void Board::takeStep(){
   vec step = inputVec();
   if(step == vec(-1, -1)){
     fprintf(stderr, "no input vector!\n");
-    exit(1);
+    step = inputVec();
   }
   while(!canFlip(step.x, step.y, turnToPieceType(turn))){
     fprintf(stderr, "invalid input (%d, %d)!\n", step.x, step.y);
@@ -208,13 +319,13 @@ void Board::printBoard(){
     printf("%d ", i);
     for(int j = 0; j < DEFAULT_SIZE; ++j){
       if(b[i][j] == white){
-	      printf("O ");
+	printf("O ");
       }
       else if(b[i][j] == black){
-	      printf("X ");
+	printf("X ");
       }
       else{
-	      printf(". ");
+	printf(". ");
       }
     }
     printf("\n\n");
@@ -222,12 +333,12 @@ void Board::printBoard(){
   printf("  0 1 2 3 4 5 6 7 \n");
 }
 
-int main(void){
-  Board b;
-  vec pos;
-  b.printBoard();
-  while(1){
-    b.takeStep(); 
-  }
-  return 0;
-}
+// int main(void){
+//   Board b;
+//   vec pos;
+//   b.printBoard();
+//   while(1){
+//     b.takeStep(); 
+//   }
+//   return 0;
+// }
