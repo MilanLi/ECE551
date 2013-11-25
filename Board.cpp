@@ -7,6 +7,7 @@
 #include <ctype.h>
 
 void Board::init(){
+  blackNum =2, whiteNum = 2, turn = false;
   b = new pieceType*[boardSize];
   for(int i = 0; i < boardSize; ++i){
     b[i] = new pieceType[boardSize];
@@ -55,6 +56,10 @@ void Board::freeBoard(){
     }
   delete [] b;
 }
+void Board::set(int x, int y, pieceType pt){
+  b[x][y] = pt;
+}
+
 pieceType Board::fetch(int x, int y)const{
   if(x < DEFAULT_SIZE && x >= 0 && y < DEFAULT_SIZE && y >= 0){
     return b[x][y];
@@ -120,11 +125,13 @@ bool Board::canFlip(int _x, int _y, pieceType pt, std::vector<vec>& v) const{ //
       y += Direction[i].y;
     }
     if((x != _x + Direction[i].x || y != _y + Direction[i].y) && (fetch(x, y) == pt)){
-      int x_start = _x;
-      int y_start = _y;
-      while((x_start = (x_start + Direction[i].x)) != x){
-	y_start = y_start + Direction[i].y;
+      int x_start = _x + Direction[i].x;
+      int y_start = _y + Direction[i].y;
+      while(x_start != x || y_start != y ){
+	//y_start = y_start + Direction[i].y;
 	v.push_back(vec(x_start, y_start));
+	x_start += Direction[i].x;
+	y_start += Direction[i].y;
       }
       flag = true;
     }
@@ -158,6 +165,30 @@ void Board::flip(int _x, int _y, pieceType pt){
   }
 }
 
+void Board::flip(int _x, int _y, pieceType pt, std::vector<vec>& v){
+  for(int i = 0; i < 8; i++){
+    int x(_x + Direction[i].x), y(_y + Direction[i].y);
+    std::vector<vec> mem;
+    while(fetch(x, y) == reverseType(pt)){
+      mem.push_back(vec(x, y));
+      x += Direction[i].x;
+      y += Direction[i].y;
+    }
+    if((x != _x + Direction[i].x || y != _y + Direction[i].y) && (fetch(x, y) == pt)){
+      for(int index = 0; index < int(mem.size()); ++index){
+	if(b[mem[index].x][mem[index].y] == reverseType(pt)){
+        v.push_back(mem[index]);
+	  b[mem[index].x][mem[index].y] = pt;
+	}
+	else{
+	  fprintf(stderr, "flipping error at (%d, %d)!\n", mem[index].x, mem[index].y);
+	  exit(1);
+	}
+      }
+    }
+  }
+}
+
 bool Board::canSetPiece(bool color){ //check if one can set piece, used for checkTurn()
   pieceType pc = color? white: black;
   for(int x = 0; x < DEFAULT_SIZE; x++){
@@ -177,25 +208,16 @@ void Board::getResult(status& stat){
     stat.s = blackWin;
     stat.black = blackCount;
     stat.white = whiteCount;
-    //printf("black: %d\n", countColor(black));
-    //printf("white: %d\n", countColor(white));
-    //printf("black wins!\n");
   }
   else if(blackCount < whiteCount){
     stat.s = whiteWin;
     stat.black = blackCount;
     stat.white = whiteCount;
-    //printf("black: %d\n", countColor(black));
-    //printf("white: %d\n", countColor(white));
-    //printf("white wins!\n");
   }
   else{
     stat.s = tie;
     stat.black = blackCount;
     stat.white = whiteCount;
-    //printf("black: %d\n", countColor(black));
-    //printf("white: %d\n", countColor(white));
-    //printf("ties!\n");
   }
 }
 
@@ -215,16 +237,14 @@ pieceType Board::checkTurn(){
     exit(1);
   }
 }
-bool Board::setPieces(int x, int y){
-  if(canFlip(x, y, turnToPieceType(turn))){
-    b[x][y] = turnToPieceType(turn); //set piece  
-    flip(x, y, turnToPieceType(turn)); // flip around
+std::vector<vec> Board::setPieces(int x, int y){
+    b[x][y] = turnToPieceType(turn); //set piece
+    std::vector<vec> ret;
+    flip(x, y, turnToPieceType(turn), ret); // flip around
     turn = !turn;
-    return true;
-  }
-  return false;
+    return ret;
 }
-int Board::countColor(pieceType pt){
+int Board::countColor(pieceType pt)const{
   int count = 0;
   for(int i = 0; i < DEFAULT_SIZE; ++i){
     for(int j = 0; j < DEFAULT_SIZE; ++j){
@@ -245,17 +265,17 @@ void skipSpace(char* p){
 vec Board::inputVec(){
   vec def(-1, -1);
   char* line = NULL;
-  size_t len = 0;
+  //size_t len = 0;
   if(turn){
     printf("white's turn : please input a vector (devided by ','): ");
   }
   else{
     printf("black's turn : please input a vector (devided by ','): ");
   }
-  if(getline(&line, &len, stdin) == -1){
+  /*if(getline(&line, &len, stdin) == -1){
     fprintf(stderr, "get line %s error!\n", line);
     exit(1);
-  }
+  }*/
   char* startp = line;
   char* endp;
   long num1 = strtol(startp, &endp, 10);
@@ -313,7 +333,7 @@ void Board::takeStep(){
   }
 }
 
-void Board::printBoard(){
+void Board::printBoard()const{
   printf("=========================\n|         Board        |\n=========================\n\n");
   for(int i = 0; i < DEFAULT_SIZE; ++i){
     printf("%d ", i);
@@ -331,14 +351,8 @@ void Board::printBoard(){
     printf("\n\n");
   }
   printf("  0 1 2 3 4 5 6 7 \n");
+  printf("Black: %d\tWhite: %d\n", countColor(black), countColor(white));
+  printf("=========================\n|         Board        |\n=========================\n");
 }
 
-// int main(void){
-//   Board b;
-//   vec pos;
-//   b.printBoard();
-//   while(1){
-//     b.takeStep(); 
-//   }
-//   return 0;
-// }
+

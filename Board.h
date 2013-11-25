@@ -29,29 +29,29 @@ private:
   int boardSize;
   int blackNum;
   int whiteNum;
+  std::vector<vec> lastTwoFlip[2];
+  vec lastTwoStep[2];
   pieceType** b;
 
-  void init();
   void freeBoard();
-  pieceType fetch(int, int)const;
-  
   void flip(int x, int y, pieceType pt);
-
+  void flip(int x, int y, pieceType pt, std::vector<vec>& v);
   bool canSetPiece(bool color);
-  
 public:
+  void init();
+  void set(int, int, pieceType);
+  pieceType fetch(int, int)const;
   int getBoardSize()const{return boardSize;}
   pieceType reverseType(pieceType pt)const;  
   pieceType turnToPieceType(bool turn)const;
   bool canFlip(int _x, int _y, pieceType pt)const;
   bool canFlip(int _x, int _y, pieceType pt, int& count)const;
   bool canFlip(int _x, int _y, pieceType pt, std::vector<vec>& v)const;
-  bool turn; 
-  Board():boardSize(DEFAULT_SIZE), blackNum(2), whiteNum(2), turn(false){
+  bool turn;
+  Board():boardSize(DEFAULT_SIZE){
     init();
   }
   Board(const Board& rhs);
-
   ~Board(){
     freeBoard();
   }
@@ -59,11 +59,12 @@ public:
   void getResult(status& stat);
   bool checkEnd();
   pieceType checkTurn();
-  bool setPieces(int x, int y);
-  int countColor(pieceType pt);
+  std::vector<vec> setPieces(int x, int y);
+  int countColor(pieceType pt)const;
   vec inputVec();
   void takeStep();
-  void printBoard();
+  void printBoard()const;
+  void regret();
 };
 
 #endif
